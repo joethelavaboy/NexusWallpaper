@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nexus</title>
+    <link rel="icon" type="image/png" href="/NexusWallpaper/favicon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #0c0c0c; }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const CELL = 24;
+const COLORS = [[255,40,50],[40,230,60],[50,170,255]];
+let W, H, dpr, bg, pulses = [], spawnT = 0, last = performance.now();
+
+function buildBg() {
+  bg = document.createElement('canvas');
+  bg.width = W * dpr; bg.height = H * dpr;
+  const b = bg.getContext('2d'); b.scale(dpr, dpr);
+  b.fillStyle = '#111'; b.fillRect(0, 0, W, H);
+  const shades = ['#2e2e2e', '#1c1c1c', '#0b0b0b', '#191919']; // top, right, bottom, left
+  for (let y = 0; y < H; y += CELL) for (let x = 0; x < W; x += CELL) {
+    const c = [x + CELL/2, y + CELL/2];
+    const corners = [[x,y],[x+CELL,y],[x+CELL,y+CELL],[x,y+CELL]];
+    for (let i = 0; i < 4; i++) {
+      const a = corners[i], d = corners[(i+1)%4];
+      b.fillStyle = shades[i];
+      b.beginPath(); b.moveTo(a[0],a[1]); b.lineTo(d[0],d[1]); b.lineTo(c[0],c[1]); b.fill();
+    }
+    b.strokeStyle = 'rgba(0,0,0,.55)'; b.strokeRect(x + .5, y + .5, CELL, CELL);
+  }
+}
+function resize() {
+  dpr = devicePixelRatio || 1;
+  W = Math.round(cv.clientWidth || innerWidth); H = Math.round(cv.clientHeight || innerHeight);
+  if (!W || !H) return; // not laid out yet; ResizeObserver will call again
+  cv.width = W * dpr; cv.height = H * dpr;
+  buildBg();
+}
+addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
+resize();
+
+const DIRS = [[0,-1],[1,0],[0,1],[-1,0]]; // up right down left
+function spawn(px, py, dir, color, speed) {
+  const gx = Math.floor(px / CELL), gy = Math.floor(py / CELL);
+  pulses.push({ gx, gy, x: gx * CELL + CELL/2, y: gy * CELL + CELL/2, acc: 0,
+    dx: DIRS[dir][0], dy: DIRS[dir][1],
+    color: color || COLORS[Math.random()*3|0], speed: speed || 8 + Math.random()*10, // cells per second
+    trail: (8 + (Math.random()*10|0)) * CELL });
+}
+cv.addEventListener('pointerdown', e => {
+  for (let d = 0; d < 4; d++) spawn(e.clientX, e.clientY, d, COLORS[Math.random()*3|0], 22);
+});
+
+function draw(p) {
+  const [r,g,b] = p.color, hw = CELL/2, tw = CELL/2;
+  const tx = p.x - p.dx * p.trail, ty = p.y - p.dy * p.trail;
+  // trail
+  const gr = ctx.createLinearGradient(p.x, p.y, tx, ty);
+  gr.addColorStop(0, `rgba(${r},${g},${b},.55)`);
+  gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = gr;
+  ctx.shadowColor = `rgba(${r},${g},${b},.8)`; ctx.shadowBlur = 14;
+  if (p.dx) ctx.fillRect(Math.min(p.x, tx), p.y - tw, p.trail, tw * 2);
+  else ctx.fillRect(p.x - tw, Math.min(p.y, ty), tw * 2, p.trail);
+  // head
+  ctx.shadowBlur = 22;
+  ctx.fillStyle = `rgb(${Math.min(255,r+90)},${Math.min(255,g+90)},${Math.min(255,b+90)})`;
+  ctx.fillRect(p.x - hw, p.y - hw, hw * 2, hw * 2);
+  ctx.shadowBlur = 0;
+}
+
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (!bg) { resize(); requestAnimationFrame(frame); return; }
+  spawnT -= dt;
+  if (spawnT <= 0) { spawn(Math.random()*W, Math.random()*H, Math.random()*4|0); spawnT = .25 + Math.random()*.5; }
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(bg, 0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of pulses) {
+    p.x += p.dx * p.speed * CELL * dt; // smooth glide; the lane stays locked to the grid
+    p.y += p.dy * p.speed * CELL * dt;
+    draw(p);
+  }
+  pulses = pulses.filter(p => p.x > -p.trail - 40 && p.x < W + p.trail + 40 && p.y > -p.trail - 40 && p.y < H + p.trail + 40);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
