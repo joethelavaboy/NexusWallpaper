@@ -14,7 +14,7 @@
 <script>
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const CELL = 24;
-const COLORS = [[255,40,50],[40,230,60],[50,170,255]];
+const COLORS = [[255,40,50],[40,230,60],[50,170,255],[255,210,30]];
 let W, H, dpr, bg, pulses = [], spawnT = 0, last = performance.now();
 
 function buildBg() {
@@ -50,11 +50,11 @@ function spawn(px, py, dir, color, speed) {
   const gx = Math.floor(px / CELL), gy = Math.floor(py / CELL);
   pulses.push({ gx, gy, x: gx * CELL + CELL/2, y: gy * CELL + CELL/2, acc: 0,
     dx: DIRS[dir][0], dy: DIRS[dir][1],
-    color: color || COLORS[Math.random()*3|0], speed: speed || 8 + Math.random()*10, // cells per second
+    color: color || COLORS[Math.random()*COLORS.length|0], speed: speed || 8 + Math.random()*10, // cells per second
     trail: (8 + (Math.random()*10|0)) * CELL });
 }
 cv.addEventListener('pointerdown', e => {
-  for (let d = 0; d < 4; d++) spawn(e.clientX, e.clientY, d, COLORS[Math.random()*3|0], 22);
+  for (let d = 0; d < 4; d++) spawn(e.clientX, e.clientY, d, COLORS[Math.random()*COLORS.length|0], 22);
 });
 
 // ambient pulses slide in from just off-screen on a random grid lane
