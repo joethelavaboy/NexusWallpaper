@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <title>Nexus</title>
-    <link rel="icon" type="image/png" href="/NexusWallpaper/favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
   html, body { height: 100%; margin: 0; overflow: hidden; background: #0c0c0c; }
@@ -58,6 +57,15 @@ cv.addEventListener('pointerdown', e => {
   for (let d = 0; d < 4; d++) spawn(e.clientX, e.clientY, d, COLORS[Math.random()*3|0], 22);
 });
 
+// ambient pulses slide in from just off-screen on a random grid lane
+function spawnEdge() {
+  const d = Math.random()*4|0, x = Math.random()*W, y = Math.random()*H;
+  if (d === 0) spawn(x, H + CELL, 0);        // enters from bottom, goes up
+  else if (d === 1) spawn(-CELL, y, 1);      // enters from left, goes right
+  else if (d === 2) spawn(x, -CELL, 2);      // enters from top, goes down
+  else spawn(W + CELL, y, 3);                // enters from right, goes left
+}
+
 function draw(p) {
   const [r,g,b] = p.color, hw = CELL/2, tw = CELL/2;
   const tx = p.x - p.dx * p.trail, ty = p.y - p.dy * p.trail;
@@ -80,7 +88,7 @@ function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (!bg) { resize(); requestAnimationFrame(frame); return; }
   spawnT -= dt;
-  if (spawnT <= 0) { spawn(Math.random()*W, Math.random()*H, Math.random()*4|0); spawnT = .25 + Math.random()*.5; }
+  if (spawnT <= 0) { spawnEdge(); spawnT = .25 + Math.random()*.5; }
 
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.globalCompositeOperation = 'source-over';
